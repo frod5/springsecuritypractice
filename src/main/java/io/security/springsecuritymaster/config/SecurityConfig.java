@@ -18,10 +18,11 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(auth -> auth
-			.requestMatchers("/").permitAll()
-			.anyRequest().authenticated()
-		)
-			.formLogin(Customizer.withDefaults());
+				.requestMatchers("/css/**", "/images/**", "/js/**", "/favicon.*", "/*/icon-*").permitAll()
+				.requestMatchers("/").permitAll()
+				.anyRequest().authenticated()
+			)
+			.formLogin(form -> form.loginPage("/login").permitAll());
 
 		return http.build();
 	}
