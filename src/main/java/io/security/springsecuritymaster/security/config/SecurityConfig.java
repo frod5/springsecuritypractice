@@ -12,6 +12,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
+import io.security.springsecuritymaster.security.handler.FormAccessDeniedHandler;
 import io.security.springsecuritymaster.security.handler.FormAuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -36,14 +37,19 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/css/**", "/images/**", "/js/**", "/favicon.*", "/*/icon-*", "/h2-console/**").permitAll()
-				.requestMatchers("/", "/sign-up","/login*").permitAll()
+				.requestMatchers("/", "/sign-up", "/login*").permitAll()
+				.requestMatchers("/user").hasAuthority("ROLE_USER")
+				.requestMatchers("/manager").hasAuthority("ROLE_MANAGER")
+				.requestMatchers("/admin").hasAuthority("ROLE_ADMIN")
 				.anyRequest().authenticated()
 			)
 			.formLogin(form -> form
 				.loginPage("/login").permitAll()
 				.authenticationDetailsSource(authenticationDetailsSource)
 				.successHandler(successHandler)
-				.failureHandler(failureHandler));
+				.failureHandler(failureHandler))
+			.exceptionHandling(exception -> exception
+				.accessDeniedHandler(new FormAccessDeniedHandler("/denied")));
 
 		return http.build();
 	}
