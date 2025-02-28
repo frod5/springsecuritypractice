@@ -8,7 +8,10 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import io.security.springsecuritymaster.security.details.FormAuthenticationDetails;
+import io.security.springsecuritymaster.security.exception.SecretException;
 import io.security.springsecuritymaster.security.service.UserDetailService;
 
 @Component("authenticationProvider")
@@ -31,6 +34,12 @@ public class FormAuthenticationProvider implements AuthenticationProvider {
 
 		if (!passwordEncoder.matches(password, userDetails.getPassword())) {
 			throw new BadCredentialsException("Invalid password");
+		}
+
+		String secretKey = ((FormAuthenticationDetails)authentication.getDetails()).getSecretKey();
+
+		if(!"secret".equals(secretKey)) {
+			throw new SecretException("Invalid secret");
 		}
 
 		return new UsernamePasswordAuthenticationToken(userDetails, password, userDetails.getAuthorities());
