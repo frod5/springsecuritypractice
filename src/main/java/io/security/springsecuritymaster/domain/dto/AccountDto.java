@@ -5,7 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import io.security.springsecuritymaster.domain.entity.Account;
 
 public record AccountDto(
-	String id,
+	Long id,
 	String username,
 	String password,
 	int age,
@@ -14,5 +14,9 @@ public record AccountDto(
 
 	public Account toEntity(PasswordEncoder passwordEncoder) {
 		return Account.create(username, passwordEncoder.encode(password), age, roles);
+	}
+
+	public AccountDto toDto(Account account) {
+		return new AccountDto(account.getId(), account.getUsername(), account.getPassword(), account.getAge(), account.getRoles());
 	}
 }
