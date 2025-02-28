@@ -8,8 +8,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
+import io.security.springsecuritymaster.security.handler.FormAuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Configuration
@@ -17,10 +19,13 @@ import jakarta.servlet.http.HttpServletRequest;
 public class SecurityConfig {
 
 	private final AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> authenticationDetailsSource;
+	private final AuthenticationSuccessHandler successHandler;
 
 	public SecurityConfig(
-		AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> authenticationDetailsSource) {
+		AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> authenticationDetailsSource,
+		FormAuthenticationSuccessHandler successHandler) {
 		this.authenticationDetailsSource = authenticationDetailsSource;
+		this.successHandler = successHandler;
 	}
 
 	@Bean
@@ -32,7 +37,8 @@ public class SecurityConfig {
 			)
 			.formLogin(form -> form
 				.loginPage("/login").permitAll()
-				.authenticationDetailsSource(authenticationDetailsSource));
+				.authenticationDetailsSource(authenticationDetailsSource)
+				.successHandler(successHandler));
 
 		return http.build();
 	}
