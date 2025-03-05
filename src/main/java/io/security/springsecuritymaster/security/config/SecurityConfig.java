@@ -1,29 +1,43 @@
 package io.security.springsecuritymaster.security.config;
 
+import java.io.IOException;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.WebAttributes;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.security.springsecuritymaster.domain.dto.AccountDto;
 import io.security.springsecuritymaster.security.filter.RestAuthenticationFilter;
 import io.security.springsecuritymaster.security.handler.FormAccessDeniedHandler;
 import io.security.springsecuritymaster.security.handler.FormAuthenticationSuccessHandler;
 import io.security.springsecuritymaster.security.provider.RestAuthenticationProvider;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @Configuration
 @EnableWebSecurity
@@ -93,6 +107,50 @@ public class SecurityConfig {
 	private RestAuthenticationFilter restAuthenticationFilter(AuthenticationManager manager) {
 		RestAuthenticationFilter filter = new RestAuthenticationFilter();
 		filter.setAuthenticationManager(manager);
+
+		// success
+		filter.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler() {
+			@Override
+			public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+				Authentication authentication) throws IOException, ServletException {
+				ObjectMapper mapper = new ObjectMapper();
+				response.setStatus(HttpStatus.OK.value());
+				response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+				AccountDto accountDto = new AccountDto(null, authentication.getPrincipal().toString(), null, 0, null);
+
+				mapper.writeValue(response.getWriter(), accountDto);
+
+				clearAuthenticationAttributes(request);
+			}
+
+			private void clearAuthenticationAttributes(HttpServletRequest request) {
+				HttpSession session = request.getSession(false);
+				if (session == null) { return;}
+				session.removeAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
+			}
+
+		});
+
+		//fail
+		filter.setAuthenticationFailureHandler(new AuthenticationFailureHandler() {
+			@Override
+			public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+				AuthenticationException exception) throws IOException, ServletException {
+				ObjectMapper mapper = new ObjectMapper();
+				response.setStatus(HttpStatus.UNAUTHORIZED.value());
+				response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+				if(exception instanceof BadCredentialsException) {
+					mapper.writeValue(response.getWriter(), "Invalid username or password");
+					return;
+				}
+
+				mapper.writeValue(response.getWriter(), "authentication failed");
+
+			}
+		});
+
 		return filter;
 	}
 
