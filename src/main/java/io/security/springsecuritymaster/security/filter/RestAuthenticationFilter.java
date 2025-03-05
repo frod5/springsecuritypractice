@@ -4,15 +4,18 @@ import java.io.IOException;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.cfg.ContextAttributes;
 
 import io.security.springsecuritymaster.domain.dto.AccountDto;
 import io.security.springsecuritymaster.security.token.RestAuthenticationToken;
@@ -25,8 +28,20 @@ public class RestAuthenticationFilter extends AbstractAuthenticationProcessingFi
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	public RestAuthenticationFilter() {
+	public RestAuthenticationFilter(HttpSecurity http) {
 		super(new AntPathRequestMatcher("/api/login","POST"));
+		setSecurityContextRepository(getSecurityContextRepository(http));
+	}
+
+	private SecurityContextRepository getSecurityContextRepository(HttpSecurity http) {
+		SecurityContextRepository repository = http.getSharedObject(SecurityContextRepository.class);
+
+		if (repository == null) {
+			repository = new DelegatingSecurityContextRepository(new RequestAttributeSecurityContextRepository(),
+				new HttpSessionSecurityContextRepository());
+		}
+
+		return repository;
 	}
 
 	@Override

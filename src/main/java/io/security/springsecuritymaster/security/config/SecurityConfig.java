@@ -32,7 +32,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.security.springsecuritymaster.domain.dto.AccountDto;
 import io.security.springsecuritymaster.security.filter.RestAuthenticationFilter;
 import io.security.springsecuritymaster.security.handler.FormAccessDeniedHandler;
-import io.security.springsecuritymaster.security.handler.FormAuthenticationSuccessHandler;
 import io.security.springsecuritymaster.security.provider.RestAuthenticationProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -94,7 +93,7 @@ public class SecurityConfig {
 				.anyRequest()
 				.permitAll()
 			).csrf(AbstractHttpConfigurer::disable)
-			.addFilterBefore(restAuthenticationFilter(manager), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(restAuthenticationFilter(http, manager), UsernamePasswordAuthenticationFilter.class)
 			.authenticationManager(manager);
 
 		return http.build();
@@ -104,8 +103,8 @@ public class SecurityConfig {
 		return new RestAuthenticationProvider(userDetailsService, passwordEncoder());
 	}
 
-	private RestAuthenticationFilter restAuthenticationFilter(AuthenticationManager manager) {
-		RestAuthenticationFilter filter = new RestAuthenticationFilter();
+	private RestAuthenticationFilter restAuthenticationFilter(HttpSecurity http, AuthenticationManager manager) {
+		RestAuthenticationFilter filter = new RestAuthenticationFilter(http);
 		filter.setAuthenticationManager(manager);
 
 		// success
@@ -147,7 +146,6 @@ public class SecurityConfig {
 				}
 
 				mapper.writeValue(response.getWriter(), "authentication failed");
-
 			}
 		});
 
