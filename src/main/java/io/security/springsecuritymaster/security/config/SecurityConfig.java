@@ -5,10 +5,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,6 +22,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import io.security.springsecuritymaster.security.filter.RestAuthenticationFilter;
 import io.security.springsecuritymaster.security.handler.FormAccessDeniedHandler;
 import io.security.springsecuritymaster.security.handler.FormAuthenticationSuccessHandler;
+import io.security.springsecuritymaster.security.provider.RestAuthenticationProvider;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Configuration
@@ -29,14 +32,16 @@ public class SecurityConfig {
 	private final AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> authenticationDetailsSource;
 	private final AuthenticationSuccessHandler successHandler;
 	private final AuthenticationFailureHandler failureHandler;
+	private final UserDetailsService userDetailsService;
 
 	public SecurityConfig(
 		AuthenticationDetailsSource<HttpServletRequest, WebAuthenticationDetails> authenticationDetailsSource,
-		FormAuthenticationSuccessHandler successHandler,
-		AuthenticationFailureHandler failureHandler) {
+		AuthenticationSuccessHandler successHandler, AuthenticationFailureHandler failureHandler,
+		UserDetailsService userDetailsService) {
 		this.authenticationDetailsSource = authenticationDetailsSource;
 		this.successHandler = successHandler;
 		this.failureHandler = failureHandler;
+		this.userDetailsService = userDetailsService;
 	}
 
 	@Bean
@@ -65,6 +70,7 @@ public class SecurityConfig {
 	public SecurityFilterChain restSecurityFilterChain(HttpSecurity http) throws Exception {
 
 		AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);
+		builder.authenticationProvider(restAuthenticationProvider());
 		AuthenticationManager manager = builder.build();
 
 		http.securityMatcher("/api/**")
@@ -80,11 +86,17 @@ public class SecurityConfig {
 		return http.build();
 	}
 
+	private AuthenticationProvider restAuthenticationProvider() {
+		return new RestAuthenticationProvider(userDetailsService, passwordEncoder());
+	}
+
 	private RestAuthenticationFilter restAuthenticationFilter(AuthenticationManager manager) {
 		RestAuthenticationFilter filter = new RestAuthenticationFilter();
 		filter.setAuthenticationManager(manager);
 		return filter;
 	}
+
+
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
