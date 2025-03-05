@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -20,8 +21,10 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.WebAttributes;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -90,11 +93,39 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/css/**", "/images/**", "/js/**", "/favicon.*", "/*/icon-*", "/h2-console/**")
 				.permitAll()
+				.requestMatchers("/api","/api/login").permitAll()
+				.requestMatchers("/api/user").hasAuthority("ROLE_USER")
+				.requestMatchers("/api/manager").hasAuthority("ROLE_MANAGER")
+				.requestMatchers("/api/admin").hasAuthority("ROLE_ADMIN")
 				.anyRequest()
-				.permitAll()
+				.authenticated()
 			).csrf(AbstractHttpConfigurer::disable)
 			.addFilterBefore(restAuthenticationFilter(http, manager), UsernamePasswordAuthenticationFilter.class)
-			.authenticationManager(manager);
+			.authenticationManager(manager)
+
+			//entryPoint
+			.exceptionHandling(exception -> exception.authenticationEntryPoint(new AuthenticationEntryPoint() {
+					@Override
+					public void commence(HttpServletRequest request, HttpServletResponse response,
+						AuthenticationException authException) throws IOException, ServletException {
+						ObjectMapper mapper = new ObjectMapper();
+						response.setStatus(HttpStatus.UNAUTHORIZED.value());
+						response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+						response.getWriter().println(mapper.writeValueAsString(HttpServletResponse.SC_UNAUTHORIZED));
+					}
+			})
+
+			//accessDenied
+			.accessDeniedHandler(new AccessDeniedHandler() {
+				@Override
+				public void handle(HttpServletRequest request, HttpServletResponse response,
+					AccessDeniedException accessDeniedException) throws IOException, ServletException {
+					ObjectMapper mapper = new ObjectMapper();
+					response.setStatus(HttpStatus.FORBIDDEN.value());
+					response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+					response.getWriter().println(mapper.writeValueAsString(HttpServletResponse.SC_FORBIDDEN));
+				}
+			}));
 
 		return http.build();
 	}
@@ -125,7 +156,9 @@ public class SecurityConfig {
 
 			private void clearAuthenticationAttributes(HttpServletRequest request) {
 				HttpSession session = request.getSession(false);
-				if (session == null) { return;}
+				if (session == null) {
+					return;
+				}
 				session.removeAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
 			}
 
@@ -140,7 +173,7 @@ public class SecurityConfig {
 				response.setStatus(HttpStatus.UNAUTHORIZED.value());
 				response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-				if(exception instanceof BadCredentialsException) {
+				if (exception instanceof BadCredentialsException) {
 					mapper.writeValue(response.getWriter(), "Invalid username or password");
 					return;
 				}
@@ -151,8 +184,6 @@ public class SecurityConfig {
 
 		return filter;
 	}
-
-
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
