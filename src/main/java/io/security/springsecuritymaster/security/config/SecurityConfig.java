@@ -2,9 +2,11 @@ package io.security.springsecuritymaster.security.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -50,6 +52,20 @@ public class SecurityConfig {
 				.failureHandler(failureHandler))
 			.exceptionHandling(exception -> exception
 				.accessDeniedHandler(new FormAccessDeniedHandler("/denied")));
+
+		return http.build();
+	}
+
+	@Bean
+	@Order(1)
+	public SecurityFilterChain restSecurityFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/api/**")
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers("/css/**", "/images/**", "/js/**", "/favicon.*", "/*/icon-*", "/h2-console/**")
+				.permitAll()
+				.anyRequest()
+				.permitAll()
+			).csrf(AbstractHttpConfigurer::disable);
 
 		return http.build();
 	}
