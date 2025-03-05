@@ -99,7 +99,8 @@ public class SecurityConfig {
 				.requestMatchers("/api/admin").hasAuthority("ROLE_ADMIN")
 				.anyRequest()
 				.authenticated()
-			).csrf(AbstractHttpConfigurer::disable)
+			)
+			// .csrf(csrf -> csrf)
 			.addFilterBefore(restAuthenticationFilter(http, manager), UsernamePasswordAuthenticationFilter.class)
 			.authenticationManager(manager)
 
